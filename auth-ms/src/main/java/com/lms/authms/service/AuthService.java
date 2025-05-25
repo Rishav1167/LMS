@@ -8,6 +8,7 @@ import com.lms.authms.exception.LoginException;
 import com.lms.authms.exception.RegisterException;
 import com.lms.authms.repository.UserDetailsRepository;
 import com.lms.authms.service.producer.OtpProducerService;
+import com.lms.authms.service.producer.UserProducerService;
 import com.lms.authms.util.JwtUtil;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +24,7 @@ public class AuthService {
     private final OtpProducerService otpProducerService;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
+    private final UserProducerService userProducerService;
 
     public AuthService(final JwtUtil jwtUtil,
                        final AuthenticationManager authenticationManager,
@@ -30,7 +32,8 @@ public class AuthService {
                        final UserMapper userMapper,
                        final OtpProducerService otpProducerService,
                        final PasswordEncoder passwordEncoder,
-                       final OtpService otpService) {
+                       final OtpService otpService,
+                       final UserProducerService userProducerService) {
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.userDetailsRepository = userDetailsRepository;
@@ -38,6 +41,7 @@ public class AuthService {
         this.otpProducerService = otpProducerService;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
+        this.userProducerService = userProducerService;
     }
 
     public AuthResponse login(AuthRequest authRequest) {
@@ -46,8 +50,8 @@ public class AuthService {
             String otp = otpService.generateOtp(authRequest.email());
 
             otpProducerService.sendMessageToNotificationMS(new OtpMessage(
-                    RabbitConfig.LMS_AUTH_TOPIC_EXCHANGE,
-                    "auth.otp",
+                    RabbitConfig.EXCHANGE_NAME,
+                    RabbitConfig.OTP_SENT_ROUTING_KEY,
                     authRequest.email(),
                     otp
             ));
@@ -66,11 +70,13 @@ public class AuthService {
             String otp = otpService.generateOtp(registerRequest.email());
 
             otpProducerService.sendMessageToNotificationMS(new OtpMessage(
-                    RabbitConfig.LMS_AUTH_TOPIC_EXCHANGE,
-                    "auth.otp",
+                    RabbitConfig.EXCHANGE_NAME,
+                    RabbitConfig.OTP_SENT_ROUTING_KEY,
                     registerRequest.email(),
                     otp
             ));
+
+            userProducerService.publishUserCreatedEvent(user);
             return new RegisterResponse("OTP sent to " + registerRequest.email());
         } catch (Exception e) {
             throw new RegisterException(e.getMessage());
@@ -100,8 +106,8 @@ public class AuthService {
         String otp = otpService.generateOtp(forgotPasswordRequest.email());
 
         otpProducerService.sendMessageToNotificationMS(new OtpMessage(
-                RabbitConfig.LMS_AUTH_TOPIC_EXCHANGE,
-                "auth.otp",
+                RabbitConfig.EXCHANGE_NAME,
+                RabbitConfig.OTP_SENT_ROUTING_KEY,
                 email,
                 otp
         ));

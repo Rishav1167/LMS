@@ -33,10 +33,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(authReq -> authReq
-                    .requestMatchers("/api/auth/**").permitAll()
-            .anyRequest().authenticated());
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(authReq -> authReq
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated());
 
         return http.build();
     }
@@ -59,10 +59,11 @@ public class SecurityConfig {
     // to create default admin
     @Bean
     public CommandLineRunner createAdmin(PasswordEncoder passwordEncoder) {
+        String email = System.getenv("SMTP_USER");
         return args -> {
-            if (userDetailsRepository.findByEmail("admin@admin.com").isEmpty()) {
+            if (userDetailsRepository.findByEmail(email).isEmpty()) {
                 User admin = new User();
-                admin.setEmail("admin@admin.com");
+                admin.setEmail(email);
                 admin.setPassword(passwordEncoder.encode("admin123"));
                 admin.setRole(Role.ADMIN);
                 userDetailsRepository.save(admin);
